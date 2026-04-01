@@ -25,7 +25,7 @@ load_dotenv()
 PROMPT = """You are an elite cinematic scriptwriter. Your task is to generate a vertical video script about a historical or mythological story.
 
 STRICT CONSTRAINTS:
-1. Length: The English text MUST be strictly between 250 and 300 words. This provides richer storytelling.
+1. Pacing & Tone: Write a dramatic, captivating, and rich cinematic script with proper build-up.
 2. Source: Pick a highly engaging story from ONLY ONE of these: Greek/Roman mythology, Bible, Bhagavad Gita, Mahabharata, Ramayana, Rigveda, Yajurveda, Atharvaveda, Samaveda, Garuda Purana, Upanishads, or great leaders.
 3. Theme: It must explicitly deal with the conquest or consequence of one of the 7 Deadly Sins (Pride, Greed, Lust, Envy, Gluttony, Wrath, Sloth).
 4. Cinematic Opening Hook (MANDATORY): You MUST start the script verbatim with ONE of these exact phrases (choose one):
@@ -49,7 +49,7 @@ Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
   "title": "A captivating title",
   "tradition": "Source tradition (e.g. Mahabharata)",
   "sin_tag": "The specific sin (e.g. Sloth)",
-  "script_english": "The full English script, matching the 250-300 word limit exactly."
+  "script_english": "The full English script organically paced."
 }
 """
 
@@ -94,12 +94,8 @@ def parse_and_validate(raw_json):
         return None
         
     word_count = len(data["script_english"].split())
-    logging.info(f"Generated script word count: {word_count}")
+    logging.info(f"Generated script natively accepted with length: {word_count} words")
     
-    if word_count < 80:
-        logging.warning(f"Script rejected: Word count ({word_count}) is critically below 80 words.")
-        return None
-
     return data
 
 def main():
