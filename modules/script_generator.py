@@ -96,8 +96,8 @@ def parse_and_validate(raw_json):
     word_count = len(data["script_english"].split())
     logging.info(f"Generated script word count: {word_count}")
     
-    if word_count < 200:
-        logging.warning(f"Script rejected: Word count ({word_count}) is below 200 words.")
+    if word_count < 80:
+        logging.warning(f"Script rejected: Word count ({word_count}) is critically below 80 words.")
         return None
 
     return data
