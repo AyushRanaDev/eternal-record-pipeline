@@ -1,0 +1,85 @@
+name: Eternal Record Daily Production Pipeline
+
+on:
+  schedule:
+    # 01:30 UTC translates exactly to 7:00 AM IST uniquely automatically
+    - cron: '30 1 * * *'
+  workflow_dispatch: # Allows manual trigger testing securely from GitHub UI
+
+jobs:
+  generate_cinematic_epic:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    # Securely port all environment secrets universally
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
+      SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+      YOUTUBE_AUTH_TOKEN: ${{ secrets.YOUTUBE_AUTH_TOKEN }}
+      PODBEAN_CLIENT_ID: ${{ secrets.PODBEAN_CLIENT_ID }}
+      PODBEAN_CLIENT_SECRET: ${{ secrets.PODBEAN_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout Repository Framework
+        uses: actions/checkout@v3
+        
+      - name: Setup Headless Python 3.10 Array
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          
+      - name: Inject Core Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Establish FFmpeg Backend (Linux Natively)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+          
+      - name: 1. Generate Cinematic Mythology Script
+        run: python modules/script_generator.py
+
+      - name: 2. Voice Sub-Matrix Extraction (Edge-TTS)
+        run: python modules/audio_generator.py
+
+      - name: 3. Bake Visuals + Mix Spotify MP3 Loop
+        run: python modules/video_builder.py --force
+
+      - name: 4. Autonomous YouTube Distribution
+        run: python modules/youtube_uploader.py
+        
+      - name: 5. Autonomous GitHub Pages RSS Generator (For Spotify)
+        run: python modules/rss_generator.py
+
+      - name: 6. Commit and Push Massive RSS Build to Main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "Deployment: Automated Episode RSS Update" || echo "No massive changes to safely commit perfectly"
+          git push origin HEAD:${GITHUB_REF}
+
+      - name: Broadcast Critical Failures directly to Rana
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          # To use this failure handler perfectly, you must generate a Gmail App Password
+          # and save it to GitHub Secrets as GMAIL_PASSWORD along with your GMAIL_USERNAME
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_PASSWORD }}
+          subject: '[URGENT] Eternal Record Production Pipeline FAILED'
+          to: ranaayush6983@gmail.com
+          from: GitHub Actions Bot
+          body: |
+            The Daily Eternal Record generation Pipeline has crucially crashed during its 7AM IST execution loop.
+            
+            Action URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Please investigate logs and rerun workflow dispatch immediately.
