@@ -13,7 +13,8 @@ except ImportError:
     Groq = None
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 except ImportError:
     genai = None
 
@@ -57,11 +58,11 @@ Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
 def generate_script_groq(api_key):
     if not Groq:
         raise ImportError("groq is not installed.")
-    logging.info("Calling Groq API (mixtral-8x7b-32768)...")
+    logging.info("Calling Groq API (llama-3.3-70b-versatile)...")
     client = Groq(api_key=api_key)
     response = client.chat.completions.create(
         messages=[{"role": "user", "content": PROMPT}],
-        model="mixtral-8x7b-32768",
+        model="llama-3.3-70b-versatile",
         temperature=0.7,
         response_format={"type": "json_object"}
     )
@@ -69,13 +70,13 @@ def generate_script_groq(api_key):
 
 def generate_script_gemini(api_key):
     if not genai:
-        raise ImportError("google-generativeai is not installed.")
-    logging.info("Calling Gemini API (gemini-1.5-pro) as fallback...")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
-    response = model.generate_content(
-        PROMPT,
-        generation_config=genai.types.GenerationConfig(
+        raise ImportError("google-genai is not installed.")
+    logging.info("Calling Gemini API (gemini-2.0-flash) as fallback...")
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=PROMPT,
+        config=types.GenerateContentConfig(
             response_mime_type="application/json",
             temperature=0.7,
         )
