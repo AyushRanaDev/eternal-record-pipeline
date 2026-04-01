@@ -25,7 +25,8 @@ load_dotenv()
 PROMPT = """You are an elite cinematic scriptwriter. Your task is to generate a vertical video script about a historical or mythological story.
 
 STRICT CONSTRAINTS:
-1. Pacing & Tone: Write a dramatic, captivating, and rich cinematic script with proper build-up.
+1. Length: The English text MUST be strictly between 250 and 300 words. This provides richer storytelling.
+CRITICAL REQUIREMENT: Your script MUST be between 250 and 300 words. Count every word carefully before responding. If your script is under 250 words, add more cinematic detail to the Conflict and Setup sections. Do not submit anything under 250 words. This is non-negotiable.
 2. Source: Pick a highly engaging story from ONLY ONE of these: Greek/Roman mythology, Bible, Bhagavad Gita, Mahabharata, Ramayana, Rigveda, Yajurveda, Atharvaveda, Samaveda, Garuda Purana, Upanishads, or great leaders.
 3. Theme: It must explicitly deal with the conquest or consequence of one of the 7 Deadly Sins (Pride, Greed, Lust, Envy, Gluttony, Wrath, Sloth).
 4. Cinematic Opening Hook (MANDATORY): You MUST start the script verbatim with ONE of these exact phrases (choose one):
@@ -56,11 +57,11 @@ Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
 def generate_script_groq(api_key):
     if not Groq:
         raise ImportError("groq is not installed.")
-    logging.info("Calling Groq API (llama-3.3-70b-versatile)...")
+    logging.info("Calling Groq API (mixtral-8x7b-32768)...")
     client = Groq(api_key=api_key)
     response = client.chat.completions.create(
         messages=[{"role": "user", "content": PROMPT}],
-        model="llama-3.3-70b-versatile",
+        model="mixtral-8x7b-32768",
         temperature=0.7,
         response_format={"type": "json_object"}
     )
@@ -94,8 +95,12 @@ def parse_and_validate(raw_json):
         return None
         
     word_count = len(data["script_english"].split())
-    logging.info(f"Generated script natively accepted with length: {word_count} words")
+    logging.info(f"Generated script word count: {word_count}")
     
+    if word_count < 200:
+        logging.warning(f"Script rejected: Word count ({word_count}) is below 200 words.")
+        return None
+
     return data
 
 def main():
