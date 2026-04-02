@@ -16,14 +16,14 @@ def get_repo_url():
 
 def generate_or_update_rss(date_str):
     docs_dir = "docs"
-    episodes_dir = os.path.join(docs_dir, "episodes")
+    episodes_dir = os.path.join(docs_dir, "episodes", date_str)
     rss_path = os.path.join(docs_dir, "feed.xml")
     
     os.makedirs(episodes_dir, exist_ok=True)
     
     output_dir = os.path.join("output", date_str)
     video_path = os.path.join(output_dir, "final_video.mp4")
-    audio_path = os.path.join(output_dir, "audio.mp3")
+    audio_path = os.path.join("ready-for-spotify", f"{date_str}_mixed_audio.mp3")
     metadata_path = os.path.join(output_dir, "metadata.json")
     script_path = os.path.join(output_dir, "script_english.txt")
     
@@ -54,10 +54,10 @@ def generate_or_update_rss(date_str):
     
     base_url = get_repo_url()
     safe_file_name_vid = quote(file_name_vid)
-    file_url_vid = f"{base_url}/episodes/{safe_file_name_vid}"
+    file_url_vid = f"{base_url}/episodes/{date_str}/{safe_file_name_vid}"
     
     safe_file_name_aud = quote(file_name_aud)
-    file_url_aud = f"{base_url}/episodes/{safe_file_name_aud}"
+    file_url_aud = f"{base_url}/episodes/{date_str}/{safe_file_name_aud}"
     
     pub_date = email.utils.format_datetime(datetime.now().astimezone())
     
