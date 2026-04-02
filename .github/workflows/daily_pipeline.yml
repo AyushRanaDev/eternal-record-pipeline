@@ -43,6 +43,9 @@ jobs:
       - name: 1. Generate Cinematic Mythology Script
         run: python modules/script_generator.py
 
+      - name: Upgrade edge-tts
+        run: pip install edge-tts --upgrade
+
       - name: 2. Voice Sub-Matrix Extraction (Edge-TTS)
         run: python modules/audio_generator.py
 

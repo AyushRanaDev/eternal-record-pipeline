@@ -2,6 +2,7 @@ import os
 import argparse
 import logging
 import asyncio
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -23,7 +24,8 @@ def format_time_srt(offset_100ns):
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 async def async_generate_tts(text, output_path, srt_path):
-    communicate = edge_tts.Communicate(text, "en-US-ChristopherNeural")
+    # Fix 1 — Switch voice
+    communicate = edge_tts.Communicate(text, "en-US-GuyNeural")
     
     with open(output_path, "wb") as audio_file, open(srt_path, "w", encoding="utf-8") as srt_file:
         index = 1
@@ -103,14 +105,36 @@ def generate_audio(date_str, force=False):
         logging.error("edge-tts is not installed. Please pip install edge-tts.")
         return False
         
-    logging.info("Generating audio using edge-tts (en-US-ChristopherNeural)...")
-    try:
-        asyncio.run(async_generate_tts(script_text, final_audio_path, srt_path))
-        logging.info(f"SUCCESS: Audio and SRT generated and saved to {output_dir}")
-        return True
-    except Exception as e:
-        logging.error(f"edge-tts failed: {e}")
-        return False
+    logging.info("Generating audio using edge-tts (en-US-GuyNeural)...")
+    
+    # Fix 2 & Fix 4 - Retry logic and fallback
+    for attempt in range(3):
+        try:
+            asyncio.run(async_generate_tts(script_text, final_audio_path, srt_path))
+            logging.info(f"SUCCESS: Audio and SRT generated and saved to {output_dir}")
+            return True
+        except Exception as e:
+            if attempt < 2:
+                logging.warning(f"edge-tts attempt {attempt+1} failed, retrying in 10s...")
+                time.sleep(10)
+            else:
+                logging.warning(f"edge-tts failed after 3 attempts. Attempting gTTS fallback...")
+                try:
+                    from gtts import gTTS
+                    tts = gTTS(text=script_text, lang='en', slow=False)
+                    tts.save(final_audio_path)
+                    
+                    # Create dummy SRT to satisfy downstream pipeline dependencies
+                    with open(srt_path, "w", encoding="utf-8") as srt_file:
+                        srt_file.write("1\n00:00:00,000 --> 00:00:10,000\n[gTTS Fallback Active]\n\n")
+                        
+                    logging.info("Used gTTS fallback successfully")
+                    return True
+                except Exception as fallback_e:
+                    logging.error(f"gTTS fallback failed: {fallback_e}")
+                    raise e
+                    
+    return False
 
 def main():
     parser = argparse.ArgumentParser()
