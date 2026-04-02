@@ -58,13 +58,13 @@ jobs:
       - name: 5. Autonomous GitHub Pages RSS Generator (For Spotify)
         run: python modules/rss_generator.py
 
-      - name: 6. Commit and Push Massive RSS Build to Main
+      - name: 6. Commit and Push Episodes + RSS to GitHub Pages
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git commit -m "Deployment: Automated Episode RSS Update" || echo "No massive changes to safely commit perfectly"
-          git push origin HEAD:${GITHUB_REF}
+          git add docs/ used_stories.json || true
+          git commit -m "Deploy: Episode $(date +%Y-%m-%d) — audio, video, feed.xml" || echo "Nothing new to commit"
+          git push origin main
 
       - name: 7. Ping Spotify to Reconnect Anchor RSS
         run: curl -s -X GET https://anchor.fm/s/110d4491c/podcast/rss
