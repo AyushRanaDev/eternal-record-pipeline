@@ -60,13 +60,36 @@ Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
 }
 """
 
+def get_used_stories():
+    if os.path.exists("used_stories.json"):
+        try:
+            with open("used_stories.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_used_story(title):
+    used = get_used_stories()
+    used.append(title)
+    with open("used_stories.json", "w", encoding="utf-8") as f:
+        json.dump(used, f, indent=4, ensure_ascii=False)
+
+def get_dynamic_prompt():
+    used_stories = get_used_stories()
+    used_text = "None"
+    if used_stories:
+        used_text = "\n".join([f"- {t}" for t in used_stories])
+        
+    return PROMPT + f"\n7. DO NOT REUSE THESE STORIES:\nYou must pick a COMPLETELY FRESH story. Under NO CIRCUMSTANCES should you write about the following heavily used topics/titles:\n{used_text}\n"
+
 def generate_script_groq(api_key):
     if not Groq:
         raise ImportError("groq is not installed.")
     logging.info("Calling Groq API (llama-3.1-8b-instant)...")
     client = Groq(api_key=api_key)
     response = client.chat.completions.create(
-        messages=[{"role": "user", "content": PROMPT}],
+        messages=[{"role": "user", "content": get_dynamic_prompt()}],
         model="llama-3.1-8b-instant",
         temperature=0.7,
         response_format={"type": "json_object"}
@@ -80,7 +103,7 @@ def generate_script_gemini(api_key):
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model="gemini-2.0-flash",
-        contents=PROMPT,
+        contents=get_dynamic_prompt(),
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             temperature=0.7,
@@ -188,6 +211,8 @@ def main():
     }
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4, ensure_ascii=False)
+        
+    save_used_story(data["title"])
         
     logging.info(f"SUCCESS: Script components saved to {output_dir}/")
 
