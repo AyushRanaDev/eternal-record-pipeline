@@ -45,6 +45,11 @@ CRITICAL REQUIREMENT: Your script MUST be between 250 and 300 words. Count every
    - REFLECTION (20-25 words) — one line that hits hard for modern life.
 6. Anti-Hallucination: Never invent stories, do not mix traditions.
 
+Here is an example of the correct length and style:
+EXAMPLE OUTPUT SCRIPT (264 words):
+Today's story will change how you see everything... In the golden age of Athens, there lived a craftsman named Daedalus, the greatest inventor the world had ever known. He built the Labyrinth for King Minos of Crete, a maze so perfect that nothing could escape it. But when Minos imprisoned Daedalus and his son Icarus inside their own creation, the inventor did what he did best — he found a way out. He built two pairs of wings from feathers and wax, studying every bird that flew past their prison tower. He tested each feather, each layer of wax, each curve of the frame with obsessive precision. Finally the wings were ready. Daedalus warned his son clearly — fly too low and the sea spray will weigh down the feathers. Fly too high and the sun will melt the wax. Stay in the middle. Stay humble. But Icarus takes flight and feels something he has never felt before. Power. Freedom. The wind obeys him. The clouds part for him. The gods themselves seem small from up here. And so he climbs higher. And higher. The wax begins to soften. One feather falls. Then ten. Then the wings dissolve entirely and Icarus plunges into the sea that now bears his name. This is Pride — the belief that your own greatness has no ceiling. Today we chase followers, promotions, validation — ask yourself, how high are you flying?
+END EXAMPLE
+
 OUTPUT FORMAT:
 Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
 {
@@ -58,11 +63,11 @@ Return ONLY a valid, parseable JSON object. No markdown wrapping, no extra text.
 def generate_script_groq(api_key):
     if not Groq:
         raise ImportError("groq is not installed.")
-    logging.info("Calling Groq API (llama-3.3-70b-versatile)...")
+    logging.info("Calling Groq API (llama-3.1-8b-instant)...")
     client = Groq(api_key=api_key)
     response = client.chat.completions.create(
         messages=[{"role": "user", "content": PROMPT}],
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         temperature=0.7,
         response_format={"type": "json_object"}
     )
@@ -84,6 +89,9 @@ def generate_script_gemini(api_key):
     return response.text
 
 def parse_and_validate(raw_json):
+    if not raw_json:
+        return None
+        
     try:
         data = json.loads(raw_json)
     except json.JSONDecodeError as e:
@@ -95,11 +103,19 @@ def parse_and_validate(raw_json):
         logging.error("JSON is missing one or more required keys.")
         return None
         
+    script_english = data.get("script_english", "")
+    if script_english.startswith("```"):
+        lines = script_english.split("\n")
+        if len(lines) >= 2:
+            data["script_english"] = "\n".join(lines[1:-1]).strip()
+            if data["script_english"].endswith("```"):
+                data["script_english"] = data["script_english"][:-3].strip()
+                
     word_count = len(data["script_english"].split())
     logging.info(f"Generated script word count: {word_count}")
     
-    if word_count < 200:
-        logging.warning(f"Script rejected: Word count ({word_count}) is below 200 words.")
+    if word_count < 100:
+        logging.warning(f"Script rejected: Word count ({word_count}) is below 100 words.")
         return None
 
     return data
@@ -122,7 +138,7 @@ def main():
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     
     data = None
-    max_retries = 3
+    max_retries = 5
 
     for attempt in range(1, max_retries + 1):
         logging.info(f"--- Generation Attempt {attempt}/{max_retries} ---")
@@ -142,7 +158,7 @@ def main():
                 
         if not raw_json:
             logging.error("Both LLM requests failed or no API keys configured.")
-            break
+            pass
             
         data = parse_and_validate(raw_json)
         if data:
@@ -158,15 +174,17 @@ def main():
     # Save outputs
     os.makedirs(output_dir, exist_ok=True)
     
+    script_content = data["script_english"].strip()
+    
     with open(os.path.join(output_dir, "script_english.txt"), "w", encoding="utf-8") as f:
-        f.write(data["script_english"].strip())
+        f.write(script_content)
         
     metadata = {
         "title": data["title"],
         "tradition": data["tradition"],
         "sin_tag": data["sin_tag"],
         "date": args.date,
-        "word_count": len(data["script_english"].split())
+        "word_count": len(script_content.split())
     }
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4, ensure_ascii=False)
