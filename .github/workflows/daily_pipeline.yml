@@ -66,6 +66,9 @@ jobs:
           git commit -m "Deployment: Automated Episode RSS Update" || echo "No massive changes to safely commit perfectly"
           git push origin HEAD:${GITHUB_REF}
 
+      - name: 7. Ping Spotify to Reconnect Anchor RSS
+        run: curl -s -X GET https://anchor.fm/s/110d4491c/podcast/rss
+
       - name: Broadcast Critical Failures directly to Rana
         if: failure()
         uses: dawidd6/action-send-mail@v3

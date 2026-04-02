@@ -77,7 +77,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
     
     draw = ImageDraw.Draw(img)
     try:
-        font_title = ImageFont.truetype("arialbd.ttf", 45) 
+        font_title = ImageFont.truetype("arialbd.ttf", 65) 
     except:
         font_title = ImageFont.load_default()
             
