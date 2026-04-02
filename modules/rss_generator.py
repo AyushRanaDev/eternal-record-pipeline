@@ -82,14 +82,28 @@ def generate_or_update_rss(date_str):
         ET.SubElement(channel, "description").text = "Daily cinematic mythology stories — 90-second vertical videos."
         ET.SubElement(channel, "link").text        = BASE_URL
         ET.SubElement(channel, "language").text    = "en-us"
+        ET.SubElement(channel, "managingEditor").text = "ranaayush6983@gmail.com (Ayush Rana)"
+        ET.SubElement(channel, "itunes:author").text  = "Ayush Rana"
         ET.SubElement(channel, "itunes:explicit").text = "no"
         itunes_img = ET.SubElement(channel, "itunes:image")
         itunes_img.set("href", f"{BASE_URL}/cover.jpg")
+        owner = ET.SubElement(channel, "itunes:owner")
+        ET.SubElement(owner, "itunes:name").text  = "Ayush Rana"
+        ET.SubElement(owner, "itunes:email").text = "ranaayush6983@gmail.com"
     else:
         logging.info("Updating existing docs/feed.xml ...")
         tree    = ET.parse(rss_path)
         rss     = tree.getroot()
         channel = rss.find("channel")
+        # Patch required Spotify fields into existing feed if missing
+        if channel.find("managingEditor") is None:
+            ET.SubElement(channel, "managingEditor").text = "ranaayush6983@gmail.com (Ayush Rana)"
+        if channel.find("{http://www.itunes.com/dtds/podcast-1.0.dtd}author") is None:
+            ET.SubElement(channel, "itunes:author").text = "Ayush Rana"
+        if channel.find("{http://www.itunes.com/dtds/podcast-1.0.dtd}owner") is None:
+            owner = ET.SubElement(channel, "itunes:owner")
+            ET.SubElement(owner, "itunes:name").text  = "Ayush Rana"
+            ET.SubElement(owner, "itunes:email").text = "ranaayush6983@gmail.com"
 
     # Build the <item> — Spotify uses the FIRST <enclosure> (audio/mpeg)
     item = ET.Element("item")
