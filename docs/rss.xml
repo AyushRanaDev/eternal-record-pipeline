@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title>Eternal Record</title>
+    <description>Automated Cinematic Mythology Pipeline.</description>
+    <link>https://AyushRanaDev.github.io/eternal-record-pipeline</link>
+    <language>en-us</language>
+    <itunes:explicit>no</itunes:explicit>
+    <itunes:image href="https://AyushRanaDev.github.io/eternal-record-pipeline/cover.jpg"/>
+    <item>
+      <title>The Fall of Icarus</title>
+      <description>Today's story will change how you see everything... In ancient Greece, Daedalus, the brilliant inventor, built the Labyrinth, a maze so complex that nothing could escape it. King Minos, impressed by Daedalus' skills, imprisoned him and his son Icarus inside their own creation. Daedalus, determined to escape, carefully crafted two pairs of wings from feathers and wax, studying every bird that flew past their prison tower. He tested each feather, each layer of wax, each curve of the frame with obsessive precision. Finally the wings were ready. Daedalus warned his son clearly — fly too low and the sea spray will weigh down the feathers. Fly too high and the sun will melt the wax. Stay in the middle. Stay humble. But Icarus takes flight and feels something he has never felt before. Power. Freedom. The wind obeys him. The clouds part for him. The gods themselves seem small from up here. And so he climbs higher. And higher. The wax begins to soften. One feather falls. Then ten. Then the wings dissolve entirely and Icarus plunges into the sea that now bears his name. This is Pride — the delusion that there's no ceiling to your greatness. Today we soar with social media, chasing likes and followers, forgetting the danger of flying too high.</description>
+      <pubDate>Thu, 02 Apr 2026 05:00:00 +0000</pubDate>
+      <guid isPermaLink="false">https://AyushRanaDev.github.io/eternal-record-pipeline/episodes/2026-04-02_episode.mp4</guid>
+      <enclosure url="https://AyushRanaDev.github.io/eternal-record-pipeline/episodes/2026-04-02_episode.mp4" length="14355611" type="video/mp4"/>
+    </item>
+  </channel>
+</rss>
