@@ -23,13 +23,52 @@ from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips, Com
 import moviepy.audio.fx.all as afx
 
 
+def _fetch_wikimedia_image(title, save_dir):
+    """
+    Try to fetch a story-specific public-domain image from Wikipedia.
+    Attempts the full title, then just the first 3 words as fallback.
+    Returns saved file path on success, None on failure.
+    """
+    candidates = [
+        title.strip().replace(" ", "_"),
+        "_".join(title.strip().split()[:3]),   # e.g. "The_Pride_of"
+    ]
+    for slug in candidates:
+        try:
+            url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}"
+            res = requests.get(url, timeout=10,
+                               headers={"User-Agent": "EternalRecord/1.0 (ranaayush6983@gmail.com)"})
+            if res.status_code == 200:
+                data = res.json()
+                img_url = (data.get("originalimage") or data.get("thumbnail") or {}).get("source")
+                if img_url:
+                    img_data = requests.get(img_url, timeout=15).content
+                    save_path = os.path.join(save_dir, "wikimedia_0.jpg")
+                    with open(save_path, "wb") as f:
+                        f.write(img_data)
+                    logging.info(f"Wikimedia image found for '{slug}': {img_url}")
+                    return save_path
+        except Exception as e:
+            logging.warning(f"Wikimedia lookup failed for '{slug}': {e}")
+    return None
+
+
 def download_unsplash_images(title, tradition, sin_tag, save_dir, count=8):
     api_key = os.getenv("UNSPLASH_API_KEY")
     if not api_key:
         logging.error("UNSPLASH_API_KEY not found.")
         return []
 
-    # Map tradition → broad visual query (avoids obscure story-specific 404s)
+    downloaded_paths = []
+
+    # ── Step 1: Wikimedia Commons — story-specific artwork (slot 0) ──────────
+    wiki_path = _fetch_wikimedia_image(title, save_dir)
+    if wiki_path:
+        downloaded_paths.append(wiki_path)
+
+    # ── Step 2: Unsplash — thematic fill for remaining slots ─────────────────
+    unsplash_count = count - len(downloaded_paths)   # 7 if Wikimedia succeeded, 8 if not
+
     tradition_queries = {
         "mahabharata":   "ancient india warrior",
         "ramayana":      "ancient india temple",
@@ -56,47 +95,45 @@ def download_unsplash_images(title, tradition, sin_tag, save_dir, count=8):
         "gluttony": "feast abundance ancient",
     }
 
-    tradition_key = tradition.lower().strip()
-    sin_key       = sin_tag.lower().strip()
-    trad_phrase   = tradition_queries.get(tradition_key, "ancient mythology")
-    sin_phrase    = sin_queries.get(sin_key, "dramatic cinematic")
-    combined      = f"{trad_phrase} {sin_phrase}"
+    trad_phrase = tradition_queries.get(tradition.lower().strip(), "ancient mythology")
+    sin_phrase  = sin_queries.get(sin_tag.lower().strip(), "dramatic cinematic")
 
-    # Try a sequence of increasingly broad queries before giving up
     query_attempts = [
-        combined,                       # e.g. "ancient india warrior storm fire dramatic"
-        trad_phrase,                    # e.g. "ancient india warrior"
-        sin_phrase,                     # e.g. "storm fire dramatic"
-        "ancient mythology dramatic",   # universal last resort
+        f"{trad_phrase} {sin_phrase}",
+        trad_phrase,
+        sin_phrase,
+        "ancient mythology dramatic",
     ]
 
     url = "https://api.unsplash.com/photos/random"
-    downloaded_paths = []
+    offset = len(downloaded_paths)   # start file index after wikimedia slot
 
     for query in query_attempts:
-        logging.info(f"Unsplash querying: '{query}'")
-        params = {"query": query, "orientation": "portrait", "count": count, "client_id": api_key}
+        logging.info(f"Unsplash querying: '{query}' (count={unsplash_count})")
+        params = {"query": query, "orientation": "portrait",
+                  "count": unsplash_count, "client_id": api_key}
         try:
             res = requests.get(url, params=params, timeout=15)
             if res.status_code == 200:
                 photos = res.json()
                 if not isinstance(photos, list) or len(photos) == 0:
-                    logging.warning(f"Unsplash returned empty list for '{query}', trying next...")
+                    logging.warning(f"Unsplash empty for '{query}', trying next...")
                     continue
                 for i, photo in enumerate(photos):
-                    img_url    = photo["urls"]["regular"]
-                    save_path  = os.path.join(save_dir, f"unsplash_{i}.jpg")
+                    img_url   = photo["urls"]["regular"]
+                    save_path = os.path.join(save_dir, f"unsplash_{offset + i}.jpg")
                     with open(save_path, "wb") as f:
                         f.write(requests.get(img_url, timeout=15).content)
                     downloaded_paths.append(save_path)
-                logging.info(f"Downloaded {len(downloaded_paths)} images (query: '{query}')")
-                break  # success — stop trying
+                logging.info(f"Unsplash: downloaded {len(photos)} images (query: '{query}')")
+                break
             else:
                 logging.warning(f"Unsplash {res.status_code} for '{query}', trying next...")
         except Exception as e:
             logging.warning(f"Unsplash request failed for '{query}': {e}")
 
     return downloaded_paths
+
 
 def bake_image_with_pillow(input_path, output_path, title_text):
     img = Image.open(input_path).convert("RGBA")
