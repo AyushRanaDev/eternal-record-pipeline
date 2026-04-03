@@ -76,10 +76,28 @@ def bake_image_with_pillow(input_path, output_path, title_text):
     img = Image.alpha_composite(img, overlay)
     
     draw = ImageDraw.Draw(img)
-    try:
-        font_title = ImageFont.truetype("arialbd.ttf", 90)
-    except:
-        font_title = ImageFont.load_default()
+    FONT_SIZE = 120
+    _font_candidates = [
+        "arialbd.ttf",                                                          # Windows
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",                # Ubuntu/Debian (GitHub Actions)
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",        # CentOS/RHEL
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",                 # Fallback Linux
+        "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",                    # Noto
+    ]
+    font_title = None
+    for _fp in _font_candidates:
+        try:
+            font_title = ImageFont.truetype(_fp, FONT_SIZE)
+            logging.info(f"Title font loaded: {_fp} @ {FONT_SIZE}px")
+            break
+        except Exception:
+            continue
+    if font_title is None:
+        try:
+            font_title = ImageFont.load_default(size=FONT_SIZE)  # Pillow >= 10.1
+        except TypeError:
+            font_title = ImageFont.load_default()
+        logging.warning("No TrueType font found — using Pillow default font (may appear small)")
             
     # Logic to wrap Title organically at the top
     y = 60
