@@ -2,8 +2,9 @@ name: Eternal Record Daily Production Pipeline
 
 on:
   schedule:
-    # 01:30 UTC translates exactly to 7:00 AM IST uniquely automatically
-    - cron: '30 1 * * *'
+    - cron: '30 1 * * *'   # 7:00 AM IST
+    - cron: '30 7 * * *'   # 1:00 PM IST
+    - cron: '30 12 * * *'  # 6:00 PM IST
   workflow_dispatch: # Allows manual trigger testing securely from GitHub UI
 
 jobs:
@@ -40,20 +41,23 @@ jobs:
       - name: Establish FFmpeg Backend (Linux Natively)
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
           
+      - name: Set unique Run ID for this slot
+        run: echo "RUN_ID=$(date +'%Y-%m-%d-%H')" >> $GITHUB_ENV
+
       - name: 1. Generate Cinematic Mythology Script
-        run: python modules/script_generator.py
+        run: python modules/script_generator.py --date $RUN_ID
 
       - name: Upgrade edge-tts
         run: pip install edge-tts --upgrade
 
       - name: 2. Voice Sub-Matrix Extraction (Edge-TTS)
-        run: python modules/audio_generator.py
+        run: python modules/audio_generator.py --date $RUN_ID
 
       - name: 3. Bake Visuals + Mix Spotify MP3 Loop
-        run: python modules/video_builder.py --force
+        run: python modules/video_builder.py --date $RUN_ID --force
 
       - name: 4. Autonomous YouTube Distribution
-        run: python modules/youtube_uploader.py
+        run: python modules/youtube_uploader.py --date $RUN_ID
         
       - name: 5. Autonomous GitHub Pages RSS Generator (For Spotify)
         run: python modules/rss_generator.py
@@ -63,7 +67,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/ used_stories.json || true
-          git commit -m "Deploy: Episode $(date +%Y-%m-%d) — audio, video, feed.xml" || echo "Nothing new to commit"
+          git commit -m "Deploy: Episode $RUN_ID — audio, video, feed.xml" || echo "Nothing new to commit"
           git push origin main
 
       - name: 7. Ping Spotify to Reconnect Anchor RSS
