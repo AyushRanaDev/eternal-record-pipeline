@@ -76,7 +76,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
     img = Image.alpha_composite(img, overlay)
     
     draw = ImageDraw.Draw(img)
-    FONT_SIZE = 120
+    FONT_SIZE = 80
     _font_candidates = [
         "arialbd.ttf",                                                          # Windows
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",                # Ubuntu/Debian (GitHub Actions)
@@ -251,10 +251,20 @@ def build_video(date_str, force=False):
 
     img_paths = download_unsplash_images(title_text, tradition, sin_tag, output_dir, count=8)
     if not img_paths:
-        logging.error("No images downloaded. Falling back to a solid block.")
+        logging.error("UNSPLASH_API_KEY missing or quota exceeded — using gradient fallback.")
         dumb_img = os.path.join(output_dir, "unsplash_0.jpg")
         os.makedirs(output_dir, exist_ok=True)
-        Image.new("RGB", (1080, 1920), (20, 20, 20)).save(dumb_img)
+        # Dark cinematic gradient fallback (navy → black) instead of solid black
+        import numpy as np
+        h, w = 1920, 1080
+        gradient = np.zeros((h, w, 3), dtype=np.uint8)
+        for row in range(h):
+            t = row / h
+            r = int(10 + (20 - 10) * t)
+            g = int(10 + (15 - 10) * t)
+            b = int(40 + (10 - 40) * t)
+            gradient[row, :] = [r, g, b]
+        Image.fromarray(gradient, "RGB").save(dumb_img)
         img_paths = [dumb_img]
 
     baked_paths = []
