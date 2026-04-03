@@ -1,55 +1,206 @@
+"""
+rss_generator.py
+────────────────
+Builds docs/feed.xml COMPLETELY FROM SCRATCH every run using plain string
+building — no parsing of any existing XML file, ever.
+
+Strategy:
+  1. Copy the current episode's audio/video into docs/episodes/<date>/
+  2. Scan ALL subdirectories of docs/episodes/ to discover every episode.
+  3. For each episode folder, try to load title/description from the
+     matching output/<date>/metadata.json + script_english.txt.
+     If those files are missing, fall back to sensible defaults.
+  4. Write a brand-new feed.xml with the exact root tag that declares
+     both itunes and content namespaces so no prefix is ever unbound.
+"""
+
 import os
 import json
 import logging
 import argparse
 import shutil
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
-from datetime import datetime
+from datetime import datetime, timezone
 import email.utils
-from urllib.parse import quote
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-BASE_URL = "https://ayushranadev.github.io/eternal-record-pipeline"
+# ── Constants ─────────────────────────────────────────────────────────────────
+BASE_URL      = "https://ayushranadev.github.io/eternal-record-pipeline"
+CHANNEL_TITLE = "Eternal Record"
+CHANNEL_DESC  = "Daily cinematic mythology stories — 90-second vertical videos."
+AUTHOR_NAME   = "Ayush Rana"
+AUTHOR_EMAIL  = "ranaayush6983@gmail.com"
+COVER_URL     = f"{BASE_URL}/cover.jpg"
 
-def generate_or_update_rss(date_str):
-    docs_dir = "docs"
-    # Each episode gets its OWN dated subfolder for clean public URLs
-    episode_dir = os.path.join(docs_dir, "episodes", date_str)
-    rss_path = os.path.join(docs_dir, "feed.xml")
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _xml_escape(text: str) -> str:
+    """Minimal XML character escaping for text nodes."""
+    return (
+        text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;")
+    )
+
+
+def _load_episode_meta(date_str: str) -> tuple[str, str, str]:
+    """
+    Returns (title, description, pub_date_rfc2822) for a given date_str.
+    Reads from output/<date>/metadata.json and script_english.txt if available.
+    Falls back to generic values when files are missing.
+    """
+    output_dir    = os.path.join("output", date_str)
+    meta_path     = os.path.join(output_dir, "metadata.json")
+    script_path   = os.path.join(output_dir, "script_english.txt")
+
+    title = f"Eternal Record – {date_str}"
+    desc  = "A cinematic mythology story."
+
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            title = meta.get("title", title)
+        except Exception as exc:
+            logging.warning(f"Could not read {meta_path}: {exc}")
+
+    if os.path.exists(script_path):
+        try:
+            with open(script_path, "r", encoding="utf-8") as f:
+                lines = [l.strip() for l in f.read().splitlines() if l.strip()]
+            if lines:
+                desc = " ".join(lines[:3])
+        except Exception as exc:
+            logging.warning(f"Could not read {script_path}: {exc}")
+
+    # Try to derive a stable pub_date from the date string itself so that
+    # re-runs don't shift older episodes' timestamps.
+    try:
+        dt       = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        pub_date = email.utils.format_datetime(dt)
+    except ValueError:
+        pub_date = email.utils.format_datetime(datetime.now(tz=timezone.utc))
+
+    return title, desc, pub_date
+
+
+def _discover_episodes(episodes_root: str) -> list[str]:
+    """
+    Return all date-named subdirectories inside eps_root, sorted newest-first.
+    A valid episode folder must contain both mixed_audio.mp3 and final_video.mp4.
+    """
+    if not os.path.isdir(episodes_root):
+        return []
+
+    valid = []
+    for name in os.listdir(episodes_root):
+        folder = os.path.join(episodes_root, name)
+        if not os.path.isdir(folder):
+            continue
+        has_audio = os.path.exists(os.path.join(folder, "mixed_audio.mp3"))
+        has_video = os.path.exists(os.path.join(folder, "final_video.mp4"))
+        if has_audio and has_video:
+            valid.append(name)
+        else:
+            logging.warning(
+                f"Episode folder '{name}' skipped — missing audio or video."
+            )
+
+    valid.sort(reverse=True)   # newest date first
+    return valid
+
+
+def _build_item_xml(date_str: str, episodes_root: str) -> str:
+    """Build a single <item> XML block for one episode."""
+    folder      = os.path.join(episodes_root, date_str)
+    aud_path    = os.path.join(folder, "mixed_audio.mp3")
+    vid_path    = os.path.join(folder, "final_video.mp4")
+    filesize_aud = os.path.getsize(aud_path)
+    filesize_vid = os.path.getsize(vid_path)
+
+    aud_url = f"{BASE_URL}/episodes/{date_str}/mixed_audio.mp3"
+    vid_url = f"{BASE_URL}/episodes/{date_str}/final_video.mp4"
+
+    title, desc, pub_date = _load_episode_meta(date_str)
+
+    return f"""\
+    <item>
+      <title>{_xml_escape(title)}</title>
+      <description>{_xml_escape(desc)}</description>
+      <pubDate>{pub_date}</pubDate>
+      <guid isPermaLink="false">{aud_url}</guid>
+      <enclosure url="{aud_url}" length="{filesize_aud}" type="audio/mpeg"/>
+      <enclosure url="{vid_url}" length="{filesize_vid}" type="video/mp4"/>
+    </item>"""
+
+
+def _build_feed_xml(item_blocks: list[str]) -> str:
+    """Assemble the complete feed.xml string from scratch."""
+    items_xml = "\n".join(item_blocks)
+    now_rfc   = email.utils.format_datetime(datetime.now(tz=timezone.utc))
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0"'
+        ' xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"'
+        ' xmlns:content="http://purl.org/rss/1.0/modules/content/">\n'
+        "  <channel>\n"
+        f"    <title>{_xml_escape(CHANNEL_TITLE)}</title>\n"
+        f"    <description>{_xml_escape(CHANNEL_DESC)}</description>\n"
+        f"    <link>{BASE_URL}</link>\n"
+        "    <language>en-us</language>\n"
+        f"    <lastBuildDate>{now_rfc}</lastBuildDate>\n"
+        f"    <managingEditor>{AUTHOR_EMAIL} ({AUTHOR_NAME})</managingEditor>\n"
+        f"    <itunes:author>{_xml_escape(AUTHOR_NAME)}</itunes:author>\n"
+        "    <itunes:explicit>no</itunes:explicit>\n"
+        f'    <itunes:image href="{COVER_URL}"/>\n'
+        "    <itunes:owner>\n"
+        f"      <itunes:name>{_xml_escape(AUTHOR_NAME)}</itunes:name>\n"
+        f"      <itunes:email>{AUTHOR_EMAIL}</itunes:email>\n"
+        "    </itunes:owner>\n"
+        f"{items_xml}\n"
+        "  </channel>\n"
+        "</rss>\n"
+    )
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def generate_or_update_rss(date_str: str) -> bool:
+    """
+    Main entry point.
+
+    1. Copies today's audio/video into docs/episodes/<date_str>/.
+    2. Scans ALL episode folders under docs/episodes/.
+    3. Builds a brand-new feed.xml from scratch — never reads the old one.
+    """
+    docs_dir     = "docs"
+    episodes_root = os.path.join(docs_dir, "episodes")
+    episode_dir  = os.path.join(episodes_root, date_str)
+    rss_path     = os.path.join(docs_dir, "feed.xml")
 
     os.makedirs(episode_dir, exist_ok=True)
 
+    # ── Locate today's source files ───────────────────────────────────────────
     output_dir = os.path.join("output", date_str)
     video_src  = os.path.join(output_dir, "final_video.mp4")
-    # Mixed audio lives in ready-for-spotify/ (produced by video_builder.py)
     audio_src  = os.path.join("ready-for-spotify", f"{date_str}_mixed_audio.mp3")
-    metadata_path = os.path.join(output_dir, "metadata.json")
-    script_path   = os.path.join(output_dir, "script_english.txt")
 
-    # ── Validate sources ──────────────────────────────────────────────────────
     if not os.path.exists(video_src):
         logging.error(f"Video missing: {video_src}")
         return False
+
     if not os.path.exists(audio_src):
-        # Fallback: try plain audio.mp3 produced by audio_generator
+        # Fallback: plain audio.mp3 produced by audio_generator
         audio_src = os.path.join(output_dir, "audio.mp3")
         if not os.path.exists(audio_src):
-            logging.error(f"Audio missing: {audio_src}")
+            logging.error(f"Audio missing (tried both ready-for-spotify and output dir)")
             return False
         logging.warning("Mixed audio not found — using plain audio.mp3 as fallback.")
 
-    # ── Load metadata ─────────────────────────────────────────────────────────
-    with open(metadata_path, "r", encoding="utf-8") as f:
-        meta = json.load(f)
-    with open(script_path, "r", encoding="utf-8") as f:
-        lines = [l.strip() for l in f.read().split('\n') if l.strip()]
-
-    title_text = meta.get("title", "A Cinematic Legend")
-    desc_text  = " ".join(lines[:3])
-
-    # ── Copy files to docs/episodes/YYYY-MM-DD/ with clean names ─────────────
+    # ── Copy into episode folder ──────────────────────────────────────────────
     vid_dest = os.path.join(episode_dir, "final_video.mp4")
     aud_dest = os.path.join(episode_dir, "mixed_audio.mp3")
 
@@ -58,100 +209,46 @@ def generate_or_update_rss(date_str):
     logging.info(f"Copied video → {vid_dest}")
     logging.info(f"Copied audio → {aud_dest}")
 
-    filesize_vid = os.path.getsize(vid_dest)
-    filesize_aud = os.path.getsize(aud_dest)
+    # ── Discover all episodes and build feed from scratch ─────────────────────
+    all_dates = _discover_episodes(episodes_root)
+    if not all_dates:
+        logging.error("No valid episode folders found under docs/episodes/")
+        return False
 
-    # ── Build public URLs ─────────────────────────────────────────────────────
-    # https://ayushranadev.github.io/eternal-record-pipeline/episodes/YYYY-MM-DD/final_video.mp4
-    # https://ayushranadev.github.io/eternal-record-pipeline/episodes/YYYY-MM-DD/mixed_audio.mp3
-    file_url_vid = f"{BASE_URL}/episodes/{date_str}/final_video.mp4"
-    file_url_aud = f"{BASE_URL}/episodes/{date_str}/mixed_audio.mp3"
+    logging.info(f"Building feed.xml from scratch with {len(all_dates)} episode(s): {all_dates}")
 
-    pub_date = email.utils.format_datetime(datetime.now().astimezone())
+    item_blocks = []
+    for ep_date in all_dates:
+        try:
+            item_blocks.append(_build_item_xml(ep_date, episodes_root))
+        except Exception as exc:
+            logging.warning(f"Skipping episode {ep_date}: {exc}")
 
-    # ── Build / update RSS XML ────────────────────────────────────────────────
-    if not os.path.exists(rss_path):
-        logging.info("Creating new docs/feed.xml ...")
-        rss = ET.Element("rss", {
-            "version": "2.0",
-            "xmlns:itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd",
-            "xmlns:content": "http://purl.org/rss/1.0/modules/content/"
-        })
-        channel = ET.SubElement(rss, "channel")
-        ET.SubElement(channel, "title").text       = "Eternal Record"
-        ET.SubElement(channel, "description").text = "Daily cinematic mythology stories — 90-second vertical videos."
-        ET.SubElement(channel, "link").text        = BASE_URL
-        ET.SubElement(channel, "language").text    = "en-us"
-        ET.SubElement(channel, "managingEditor").text = "ranaayush6983@gmail.com (Ayush Rana)"
-        ET.SubElement(channel, "itunes:author").text  = "Ayush Rana"
-        ET.SubElement(channel, "itunes:explicit").text = "no"
-        itunes_img = ET.SubElement(channel, "itunes:image")
-        itunes_img.set("href", f"{BASE_URL}/cover.jpg")
-        owner = ET.SubElement(channel, "itunes:owner")
-        ET.SubElement(owner, "itunes:name").text  = "Ayush Rana"
-        ET.SubElement(owner, "itunes:email").text = "ranaayush6983@gmail.com"
-    else:
-        logging.info("Updating existing docs/feed.xml ...")
-        tree    = ET.parse(rss_path)
-        rss     = tree.getroot()
-        channel = rss.find("channel")
-        # Patch required Spotify fields into existing feed if missing
-        if channel.find("managingEditor") is None:
-            ET.SubElement(channel, "managingEditor").text = "ranaayush6983@gmail.com (Ayush Rana)"
-        if channel.find("{http://www.itunes.com/dtds/podcast-1.0.dtd}author") is None:
-            ET.SubElement(channel, "itunes:author").text = "Ayush Rana"
-        if channel.find("{http://www.itunes.com/dtds/podcast-1.0.dtd}owner") is None:
-            owner = ET.SubElement(channel, "itunes:owner")
-            ET.SubElement(owner, "itunes:name").text  = "Ayush Rana"
-            ET.SubElement(owner, "itunes:email").text = "ranaayush6983@gmail.com"
-
-    # Build the <item> — Spotify uses the FIRST <enclosure> (audio/mpeg)
-    item = ET.Element("item")
-    ET.SubElement(item, "title").text                  = title_text
-    ET.SubElement(item, "description").text            = desc_text
-    ET.SubElement(item, "pubDate").text                = pub_date
-    ET.SubElement(item, "guid", isPermaLink="false").text = file_url_aud
-
-    # Primary enclosure: audio (Spotify/Anchor reads this)
-    enc_aud = ET.SubElement(item, "enclosure")
-    enc_aud.set("url",    file_url_aud)
-    enc_aud.set("length", str(filesize_aud))
-    enc_aud.set("type",   "audio/mpeg")
-
-    # Secondary enclosure: video
-    enc_vid = ET.SubElement(item, "enclosure")
-    enc_vid.set("url",    file_url_vid)
-    enc_vid.set("length", str(filesize_vid))
-    enc_vid.set("type",   "video/mp4")
-
-    # Prepend so newest episode appears first
-    insert_at = (list(channel).index(channel.find("item"))
-                 if channel.find("item") is not None
-                 else len(channel))
-    channel.insert(insert_at, item)
-
-    # ── Serialise ─────────────────────────────────────────────────────────────
-    xml_str    = ET.tostring(rss, encoding="utf-8")
-    parsed_xml = minidom.parseString(xml_str)
-    pretty_xml = parsed_xml.toprettyxml(indent="  ")
-    pretty_xml = "\n".join(l for l in pretty_xml.split("\n") if l.strip())
+    feed_xml = _build_feed_xml(item_blocks)
 
     with open(rss_path, "w", encoding="utf-8") as f:
-        f.write(pretty_xml)
+        f.write(feed_xml)
 
-    logging.info(f"SUCCESS: Episode added to docs/feed.xml")
-    logging.info(f"RSS live at: {BASE_URL}/feed.xml")
-    logging.info(f"Audio URL:   {file_url_aud}")
-    logging.info(f"Video URL:   {file_url_vid}")
+    logging.info("SUCCESS: docs/feed.xml rebuilt from scratch.")
+    logging.info(f"RSS live at : {BASE_URL}/feed.xml")
+    logging.info(f"Episodes    : {len(item_blocks)}")
     return True
 
 
+# ── CLI entry point ───────────────────────────────────────────────────────────
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--date", type=str, default=datetime.now().strftime("%Y-%m-%d"))
+    parser = argparse.ArgumentParser(description="Build Eternal Record RSS feed from scratch.")
+    parser.add_argument(
+        "--date",
+        type=str,
+        default=datetime.now().strftime("%Y-%m-%d"),
+        help="Episode date (YYYY-MM-DD). Defaults to today.",
+    )
     args = parser.parse_args()
     if not generate_or_update_rss(args.date):
-        exit(1)
+        raise SystemExit(1)
+
 
 if __name__ == "__main__":
     main()
