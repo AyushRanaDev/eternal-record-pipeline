@@ -76,7 +76,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
     img = Image.alpha_composite(img, overlay)
     
     draw = ImageDraw.Draw(img)
-    FONT_SIZE = 80
+    FONT_SIZE = 65
     _font_candidates = [
         "arialbd.ttf",                                                          # Windows
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",                # Ubuntu/Debian (GitHub Actions)
