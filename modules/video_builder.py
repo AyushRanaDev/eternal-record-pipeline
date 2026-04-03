@@ -28,30 +28,74 @@ def download_unsplash_images(title, tradition, sin_tag, save_dir, count=8):
     if not api_key:
         logging.error("UNSPLASH_API_KEY not found.")
         return []
-        
-    query = f"{title} {sin_tag} {tradition}".strip()
-    logging.info(f"Unsplash Search dynamically querying: '{query}'")
-    
-    url = f"https://api.unsplash.com/photos/random"
-    params = {"query": query, "orientation": "portrait", "count": count, "client_id": api_key}
-    
+
+    # Map tradition → broad visual query (avoids obscure story-specific 404s)
+    tradition_queries = {
+        "mahabharata":   "ancient india warrior",
+        "ramayana":      "ancient india temple",
+        "greek":         "ancient greece ruins",
+        "roman":         "ancient rome columns",
+        "bible":         "ancient desert light",
+        "upanishad":     "cosmos meditation",
+        "upanishads":    "cosmos meditation",
+        "rigveda":       "sacred fire ancient",
+        "yajurveda":     "sacred ritual ancient",
+        "atharvaveda":   "mystical ancient india",
+        "samaveda":      "sacred chant ancient",
+        "garuda purana": "cosmic darkness ancient",
+        "norse":         "dark forest fog",
+        "king":          "medieval castle throne",
+    }
+    sin_queries = {
+        "pride":    "golden crown glory",
+        "wrath":    "storm fire dramatic",
+        "envy":     "shadow dark mirror",
+        "greed":    "gold treasure ancient",
+        "lust":     "rose petals dramatic",
+        "sloth":    "misty abandoned ruins",
+        "gluttony": "feast abundance ancient",
+    }
+
+    tradition_key = tradition.lower().strip()
+    sin_key       = sin_tag.lower().strip()
+    trad_phrase   = tradition_queries.get(tradition_key, "ancient mythology")
+    sin_phrase    = sin_queries.get(sin_key, "dramatic cinematic")
+    combined      = f"{trad_phrase} {sin_phrase}"
+
+    # Try a sequence of increasingly broad queries before giving up
+    query_attempts = [
+        combined,                       # e.g. "ancient india warrior storm fire dramatic"
+        trad_phrase,                    # e.g. "ancient india warrior"
+        sin_phrase,                     # e.g. "storm fire dramatic"
+        "ancient mythology dramatic",   # universal last resort
+    ]
+
+    url = "https://api.unsplash.com/photos/random"
     downloaded_paths = []
-    try:
-        res = requests.get(url, params=params)
-        if res.status_code == 200:
-            photos = res.json()
-            for i, photo in enumerate(photos):
-                img_url = photo["urls"]["regular"]
-                save_path = os.path.join(save_dir, f"unsplash_{i}.jpg")
-                with open(save_path, "wb") as f:
-                    f.write(requests.get(img_url).content)
-                downloaded_paths.append(save_path)
-            logging.info(f"Successfully downloaded {len(downloaded_paths)} specific images from Unsplash.")
-        else:
-            logging.error(f"Unsplash API returned {res.status_code}: {res.text}")
-    except Exception as e:
-        logging.error(f"Unsplash query failed natively: {e}")
-    
+
+    for query in query_attempts:
+        logging.info(f"Unsplash querying: '{query}'")
+        params = {"query": query, "orientation": "portrait", "count": count, "client_id": api_key}
+        try:
+            res = requests.get(url, params=params, timeout=15)
+            if res.status_code == 200:
+                photos = res.json()
+                if not isinstance(photos, list) or len(photos) == 0:
+                    logging.warning(f"Unsplash returned empty list for '{query}', trying next...")
+                    continue
+                for i, photo in enumerate(photos):
+                    img_url    = photo["urls"]["regular"]
+                    save_path  = os.path.join(save_dir, f"unsplash_{i}.jpg")
+                    with open(save_path, "wb") as f:
+                        f.write(requests.get(img_url, timeout=15).content)
+                    downloaded_paths.append(save_path)
+                logging.info(f"Downloaded {len(downloaded_paths)} images (query: '{query}')")
+                break  # success — stop trying
+            else:
+                logging.warning(f"Unsplash {res.status_code} for '{query}', trying next...")
+        except Exception as e:
+            logging.warning(f"Unsplash request failed for '{query}': {e}")
+
     return downloaded_paths
 
 def bake_image_with_pillow(input_path, output_path, title_text):
