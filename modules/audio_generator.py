@@ -57,14 +57,19 @@ def get_most_recent_folder():
         logging.error(f"Error reading {output_base}: {e}")
         return None
         
-    # Filter folders that match YYYY-MM-DD
+    # Filter folders that match YYYY-MM-DD or YYYY-MM-DD-HH
     valid_folders = []
     for f in folders:
-        try:
-            datetime.strptime(f, "%Y-%m-%d")
+        matched = False
+        for fmt in ("%Y-%m-%d-%H", "%Y-%m-%d"):
+            try:
+                datetime.strptime(f, fmt)
+                matched = True
+                break
+            except ValueError:
+                continue
+        if matched:
             valid_folders.append(f)
-        except ValueError:
-            pass
             
     if not valid_folders:
         return None

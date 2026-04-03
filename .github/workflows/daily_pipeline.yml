@@ -60,7 +60,7 @@ jobs:
         run: python modules/youtube_uploader.py --date $RUN_ID
         
       - name: 5. Autonomous GitHub Pages RSS Generator (For Spotify)
-        run: python modules/rss_generator.py
+        run: python modules/rss_generator.py --date $RUN_ID
 
       - name: 6. Commit and Push Episodes + RSS to GitHub Pages
         run: |

@@ -75,12 +75,16 @@ def _load_episode_meta(date_str: str) -> tuple[str, str, str]:
         except Exception as exc:
             logging.warning(f"Could not read {script_path}: {exc}")
 
-    # Try to derive a stable pub_date from the date string itself so that
-    # re-runs don't shift older episodes' timestamps.
-    try:
-        dt       = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        pub_date = email.utils.format_datetime(dt)
-    except ValueError:
+    # Try to derive a stable pub_date — handle both YYYY-MM-DD and YYYY-MM-DD-HH.
+    pub_date = None
+    for fmt in ("%Y-%m-%d-%H", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
+            pub_date = email.utils.format_datetime(dt)
+            break
+        except ValueError:
+            continue
+    if pub_date is None:
         pub_date = email.utils.format_datetime(datetime.now(tz=timezone.utc))
 
     return title, desc, pub_date
