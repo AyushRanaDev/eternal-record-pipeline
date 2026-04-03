@@ -77,7 +77,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
     
     draw = ImageDraw.Draw(img)
     try:
-        font_title = ImageFont.truetype("arialbd.ttf", 65) 
+        font_title = ImageFont.truetype("arialbd.ttf", 90)
     except:
         font_title = ImageFont.load_default()
             
@@ -99,7 +99,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
             chunks.append(" ".join(current_chunk))
         return chunks
 
-    title_lines = chunk_text(title_text, font_title, 900)
+    title_lines = chunk_text(title_text, font_title, 900)[:2]
 
     for line in title_lines:
         if hasattr(draw, 'textbbox'):
@@ -110,7 +110,7 @@ def bake_image_with_pillow(input_path, output_path, title_text):
             w, h = draw.textsize(line, font=font_title)
             
         x = (1080 - w) // 2
-        draw.text((x+4, y+4), line, font=font_title, fill="black") # deep shadow
+        draw.text((x+5, y+5), line, font=font_title, fill="black") # deep shadow
         draw.text((x, y), line, font=font_title, fill="#FFD700") # Gold explicit text
         y += h + 15
 
