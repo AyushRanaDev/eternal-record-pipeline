@@ -1,27 +1,34 @@
-<?xml version="1.0" ?>
-<rss xmlns:ns0="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Eternal Record</title>
-    <description>Automated Cinematic Mythology Pipeline.</description>
+    <description>Daily cinematic mythology stories — 90-second vertical videos.</description>
     <link>https://ayushranadev.github.io/eternal-record-pipeline</link>
     <language>en-us</language>
-    <ns0:explicit>no</ns0:explicit>
-    <ns0:image href="https://ayushranadev.github.io/eternal-record-pipeline/cover.jpg"/>
+    <lastBuildDate>Fri, 03 Apr 2026 04:48:27 +0000</lastBuildDate>
+    <managingEditor>ranaayush6983@gmail.com (Ayush Rana)</managingEditor>
+    <itunes:author>Ayush Rana</itunes:author>
+    <itunes:explicit>no</itunes:explicit>
+    <itunes:image href="https://ayushranadev.github.io/eternal-record-pipeline/cover.jpg"/>
+    <itunes:owner>
+      <itunes:name>Ayush Rana</itunes:name>
+      <itunes:email>ranaayush6983@gmail.com</itunes:email>
+    </itunes:owner>
     <item>
-      <title>The Fall of King Suddhodana</title>
-      <description>Today's story will change how you see everything... In the kingdom of Kapilavastu, King Suddhodana ruled with an iron fist, but his heart was consumed by greed for power and wealth. He lavished his people with grand festivals, but at the cost of their freedom. His wife, Queen Maya, gave birth to a son, Siddhartha, who would one day change the course of history. As Siddhartha's beauty and wisdom grew, so did his father's pride and greed. Suddhodana sought to keep his son ignorant of the world's suffering, but fate had other plans. The prince encountered the four sights - old age, sickness, death, and a wandering ascetic - which opened his eyes to the world's true nature. He renounced his royal life and embarked on a spiritual journey, leaving behind the kingdom that had been his prison. This is Greed - the insatiable craving for more. Today we measure success by our bank accounts, asking ourselves, what price are we paying for our prosperity?</description>
-      <pubDate>Thu, 02 Apr 2026 07:34:44 +0000</pubDate>
+      <title>The Blazing Wrath of Karna</title>
+      <description>Today&apos;s story will change how you see everything... In the midst of the great war of Kurukshetra, Karna stood tall as the greatest warrior the world had ever known, his chariot wheels ablaze with the fury of a thousand suns. His rage against the Pandavas knew no bounds as he recalled the injustices done to him by his own people, and the pain of being abandoned by his mother, Kunti. He rode forth, his bow sang with the power of a thousand arrows, his chariot left a trail of destruction wherever he went. His wrath was so intense that it seemed the very earth itself was burning beneath his feet. But as the battle raged on, Karna&apos;s rage consumed him, he began to lose control, striking down friend and foe alike. And in that moment of unbridled fury, he saw the face of his mother, Kunti, and his heart was filled with regret. This is Wrath — the sin that consumes us all, and destroys everything in its path. Can we learn to control our rage, or will it consume us like the flames that engulfed Karna?</description>
+      <pubDate>Fri, 03 Apr 2026 00:00:00 +0000</pubDate>
+      <guid isPermaLink="false">https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-03/mixed_audio.mp3</guid>
+      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-03/mixed_audio.mp3" length="932301" type="audio/mpeg"/>
+      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-03/final_video.mp4" length="14110339" type="video/mp4"/>
+    </item>
+    <item>
+      <title>Eternal Record – 2026-04-02</title>
+      <description>A cinematic mythology story.</description>
+      <pubDate>Thu, 02 Apr 2026 00:00:00 +0000</pubDate>
       <guid isPermaLink="false">https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02/mixed_audio.mp3</guid>
       <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02/mixed_audio.mp3" length="908059" type="audio/mpeg"/>
       <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02/final_video.mp4" length="16773728" type="video/mp4"/>
-    </item>
-    <item>
-      <title>The Tragic Fall of Icarus</title>
-      <description>Today's story will change how you see everything... In the golden age of Athens, a young inventor named Icarus lived a life of comfort and excess, the son of the greatest craftsman in the world. Daedalus built the Labyrinth for King Minos of Crete but was imprisoned along with his son. The inventor created two pairs of wings for their escape, warning Icarus to stay in the middle, to stay humble. But Icarus takes flight and feels the rush of power and freedom. The wind obeys him, the clouds part for him, the gods themselves seem small from up here. He climbs higher, higher, the wax softens, one feather falls, then ten, and his wings dissolve entirely. Icarus plunges into the sea that now bears his name. This is Pride - the delusion of invincibility. We all have wings, but our greatest danger lies in flying too close to the sun.</description>
-      <pubDate>Thu, 02 Apr 2026 06:45:27 +0000</pubDate>
-      <guid isPermaLink="false">https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02_episode.mp4</guid>
-      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02_episode.mp4" length="9011242" type="video/mp4"/>
-      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-02_episode.mp3" length="305568" type="audio/mpeg"/>
     </item>
   </channel>
 </rss>
