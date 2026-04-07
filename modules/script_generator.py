@@ -44,6 +44,7 @@ CRITICAL REQUIREMENT: Your script MUST be between 250 and 300 words. Count every
    - THE SIN NAMED (20-25 words) — explicitly name the sin and its consequence.
    - REFLECTION (20-25 words) — one line that hits hard for modern life.
 6. Anti-Hallucination: Never invent stories, do not mix traditions.
+7. CULTURAL ART STYLE (CRITICAL): Ensure the choice of story and 'tradition' allows for authentic historical imagery. For Indian stories, favor themes from the Ramayana, Mahabharata, or Puranas that are famously depicted in Indian Miniature Paintings (Pahari/Kangra style). For Greek myths, focus on scenes depicted in classical pottery or sculpture. 
 
 Here is an example of the correct length and style:
 EXAMPLE OUTPUT SCRIPT (264 words):

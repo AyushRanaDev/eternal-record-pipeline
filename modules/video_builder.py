@@ -23,116 +23,204 @@ from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips, Com
 import moviepy.audio.fx.all as afx
 
 
-def _fetch_wikimedia_image(title, save_dir):
+def download_images(title, tradition, sin_tag, save_dir, count=8):
     """
-    Try to fetch a story-specific public-domain image from Wikipedia.
-    Attempts the full title, then just the first 3 words as fallback.
-    Returns saved file path on success, None on failure.
+    Priority 1: Wikipedia Page Images (up to 4)
+    Priority 2: Wikimedia Commons Search (historical artwork)
+    Priority 3: Unsplash Story Title Keywords
+    Priority 4: Fallback (Tradition/Sin theme)
     """
-    candidates = [
-        title.strip().replace(" ", "_"),
-        "_".join(title.strip().split()[:3]),   # e.g. "The_Pride_of"
-    ]
-    for slug in candidates:
-        try:
-            url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}"
-            res = requests.get(url, timeout=10,
-                               headers={"User-Agent": "EternalRecord/1.0 (ranaayush6983@gmail.com)"})
-            if res.status_code == 200:
-                data = res.json()
-                img_url = (data.get("originalimage") or data.get("thumbnail") or {}).get("source")
-                if img_url:
-                    img_data = requests.get(img_url, timeout=15).content
-                    save_path = os.path.join(save_dir, "wikimedia_0.jpg")
-                    with open(save_path, "wb") as f:
-                        f.write(img_data)
-                    logging.info(f"Wikimedia image found for '{slug}': {img_url}")
-                    return save_path
-        except Exception as e:
-            logging.warning(f"Wikimedia lookup failed for '{slug}': {e}")
-    return None
-
-
-def download_unsplash_images(title, tradition, sin_tag, save_dir, count=8):
-    api_key = os.getenv("UNSPLASH_API_KEY")
-    if not api_key:
-        logging.error("UNSPLASH_API_KEY not found.")
-        return []
-
     downloaded_paths = []
+    
+    # --- ART STYLE MAPPING ---
+    style_keywords = ""
+    lower_tradition = tradition.lower().strip()
+    if any(x in lower_tradition for x in ["mahabharata", "ramayana", "purana", "veda", "bhagavad gita", "upanishad", "hindu"]):
+        style_keywords = "Indian Miniature Painting Pahari Kangra Basohli Art or Art related to the Stories Script"
+    elif any(x in lower_tradition for x in ["greek", "olympus"]):
+        style_keywords = "Ancient Greek Painting Art andancient  structures and art realted to the story "
+    elif any(x in lower_tradition for x in ["roman", "classical"]):
+        style_keywords = "Roman Fresco Pompeii Art Classical Sculpture and Roman painting structures or art related to the story"
+    elif any(x in lower_tradition for x in ["norse", "viking", "odin"]):
+        style_keywords = "Norse Wood Carving Viking Age Illustration or art related to the story"
+    elif "bible" in lower_tradition or "testament" in lower_tradition:
+        style_keywords = "Renaissance Biblical Art Classic Illustration or  museums art related to story and theme and structures"
 
-    # ── Step 1: Wikimedia Commons — story-specific artwork (slot 0) ──────────
-    wiki_path = _fetch_wikimedia_image(title, save_dir)
-    if wiki_path:
-        downloaded_paths.append(wiki_path)
+    query = f"{title} {tradition} {style_keywords}".strip()
+    
+    headers = {"User-Agent": "EternalRecord/1.0 (ranaayush6983@gmail.com)"}
+    
+    # --- Priority 1: Wikipedia API (Story specific artwork) ---
+    try:
+        search_url = "https://en.wikipedia.org/w/api.php"
+        search_params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "format": "json",
+            "origin": "*"
+        }
+        res = requests.get(search_url, params=search_params, headers=headers, timeout=10)
+        if res.status_code == 200:
+            search_results = res.json().get("query", {}).get("search", [])
+            if search_results:
+                page_title = search_results[0]["title"]
+                logging.info(f"Priority 1: Wikipedia page found: '{page_title}'")
+                
+                img_query_params = {
+                    "action": "query",
+                    "titles": page_title,
+                    "generator": "images",
+                    "gimlmt": 12,
+                    "prop": "imageinfo",
+                    "iiprop": "url",
+                    "format": "json",
+                    "origin": "*"
+                }
+                img_res = requests.get(search_url, params=img_query_params, headers=headers, timeout=10)
+                if img_res.status_code == 200:
+                    pages = img_res.json().get("query", {}).get("pages", {})
+                    wiki_imgs = []
+                    for page_id, page_data in pages.items():
+                        img_info = page_data.get("imageinfo", [{}])[0]
+                        img_url = img_info.get("url")
+                        if img_url:
+                            ext = img_url.split(".")[-1].lower()
+                            if ext in ["jpg", "jpeg", "png"] and "icon" not in img_url.lower() and "logo" not in img_url.lower():
+                                wiki_imgs.append(img_url)
+                    
+                    for i, img_url in enumerate(wiki_imgs[:4]):
+                        try:
+                            img_data = requests.get(img_url, headers=headers, timeout=15).content
+                            save_path = os.path.join(save_dir, f"wiki_{len(downloaded_paths)}.jpg")
+                            with open(save_path, "wb") as f:
+                                f.write(img_data)
+                            downloaded_paths.append(save_path)
+                            if len(downloaded_paths) >= count: break
+                        except: continue
+                    if wiki_imgs:
+                        logging.info(f"Priority 1: Downloaded {len(downloaded_paths)} images from Wikipedia.")
+    except Exception as e:
+        logging.warning(f"Priority 1 (Wikipedia) failed: {e}")
 
-    # ── Step 2: Unsplash — thematic fill for remaining slots ─────────────────
-    unsplash_count = count - len(downloaded_paths)   # 7 if Wikimedia succeeded, 8 if not
+    if len(downloaded_paths) >= count: return downloaded_paths
 
+    # --- Priority 2: Wikimedia Commons Search ---
+    try:
+        commons_url = "https://commons.wikimedia.org/w/api.php"
+        commons_params = {
+            "action": "query",
+            "generator": "search",
+            "gsrsearch": query,
+            "gsrnamespace": 6,
+            "prop": "imageinfo",
+            "iiprop": "url",
+            "gsrlimit": 10,
+            "format": "json",
+            "origin": "*"
+        }
+        res = requests.get(commons_url, params=commons_params, headers=headers, timeout=10)
+        if res.status_code == 200:
+            pages = res.json().get("query", {}).get("pages", {})
+            found_commons = 0
+            for page_id, page_data in pages.items():
+                img_info = page_data.get("imageinfo", [{}])[0]
+                img_url = img_info.get("url")
+                if img_url:
+                    try:
+                        ext = img_url.split(".")[-1].lower()
+                        if ext not in ["jpg", "jpeg", "png"]: continue
+                        img_data = requests.get(img_url, headers=headers, timeout=15).content
+                        save_path = os.path.join(save_dir, f"commons_{len(downloaded_paths)}.jpg")
+                        with open(save_path, "wb") as f:
+                            f.write(img_data)
+                        downloaded_paths.append(save_path)
+                        found_commons += 1
+                        if len(downloaded_paths) >= count: break
+                    except: continue
+            if found_commons > 0:
+                logging.info(f"Priority 2: Downloaded {found_commons} images from Wikimedia Commons. Total now: {len(downloaded_paths)}")
+    except Exception as e:
+
+        logging.warning(f"Priority 2 (Commons) failed: {e}")
+
+    if len(downloaded_paths) >= count: return downloaded_paths
+
+    # --- Priority 3: Unsplash with specific keywords ---
+    api_key = os.getenv("UNSPLASH_API_KEY")
+    if api_key:
+        title_keywords = " ".join(title.split()[:3])
+        unsplash_query = f"{title_keywords} {tradition} {style_keywords}".strip()
+        logging.info(f"Priority 3: Querying Unsplash with '{unsplash_query}'")
+        url = "https://api.unsplash.com/photos/random"
+        params = {"query": unsplash_query, "orientation": "portrait",
+                  "count": count - len(downloaded_paths), "client_id": api_key}
+        try:
+            res = requests.get(url, params=params, timeout=15)
+            if res.status_code == 200:
+                photos = res.json()
+                if isinstance(photos, list):
+                    for photo in photos:
+                        img_url = photo["urls"]["regular"]
+                        save_path = os.path.join(save_dir, f"unsplash_p3_{len(downloaded_paths)}.jpg")
+                        with open(save_path, "wb") as f:
+                            f.write(requests.get(img_url, timeout=15).content)
+                        downloaded_paths.append(save_path)
+                    logging.info(f"Priority 3: Downloaded images from Unsplash Keywords. Total now: {len(downloaded_paths)}")
+        except Exception as e:
+            logging.warning(f"Priority 3 (Unsplash Keywords) failed: {e}")
+
+    if len(downloaded_paths) >= count: return downloaded_paths
+
+    # --- Priority 4: Tradition/Sin theme Fallback ---
     tradition_queries = {
-        "mahabharata":   "ancient india warrior",
-        "ramayana":      "ancient india temple",
-        "greek":         "ancient greece ruins",
-        "roman":         "ancient rome columns",
-        "bible":         "ancient desert light",
-        "upanishad":     "cosmos meditation",
-        "upanishads":    "cosmos meditation",
-        "rigveda":       "sacred fire ancient",
-        "yajurveda":     "sacred ritual ancient",
-        "atharvaveda":   "mystical ancient india",
-        "samaveda":      "sacred chant ancient",
-        "garuda purana": "cosmic darkness ancient",
-        "norse":         "dark forest fog",
-        "king":          "medieval castle throne",
+        "mahabharata":   "Indian Miniature Painting Mahabharata Kurukshetra Warrior", 
+        "ramayana":      "Indian Miniature Painting Ramayana Temple Ancient India",
+        "greek":         "Ancient Greek Mythology Vase Painting Olympian God", 
+        "roman":         "Ancient Roman Fresco Classical Sculpture",
+        "bible":         "Renaissance Biblical Painting Classical Art", 
+        "upanishad":     "Cosmos Cosmic Indian Art Meditation",
+        "upanishads":    "Cosmos Cosmic Indian Art Meditation", 
+        "rigveda":       "Sacred Ritual Fire Ancient Indian Art",
+        "yajurveda":     "Sacred Ritual Ancient India Art", 
+        "atharvaveda":   "Mystical Ancient Indian Tantra Art",
+        "samaveda":      "Sacred Chant Indian Art Ancient", 
+        "garuda purana": "Cosmology Afterlife Indian Miniature Painting",
+        "norse":         "Norse Wood Carving Viking Age Illustration Mythology", 
+        "king":          "Medieval Illustration Manuscript Throne",
     }
     sin_queries = {
-        "pride":    "golden crown glory",
-        "wrath":    "storm fire dramatic",
-        "envy":     "shadow dark mirror",
-        "greed":    "gold treasure ancient",
-        "lust":     "rose petals dramatic",
-        "sloth":    "misty abandoned ruins",
+        "pride": "golden crown glory", "wrath": "storm fire dramatic",
+        "envy": "shadow dark mirror", "greed": "gold treasure ancient",
+        "lust": "rose petals dramatic", "sloth": "misty abandoned ruins",
         "gluttony": "feast abundance ancient",
     }
 
     trad_phrase = tradition_queries.get(tradition.lower().strip(), "ancient mythology")
     sin_phrase  = sin_queries.get(sin_tag.lower().strip(), "dramatic cinematic")
 
-    query_attempts = [
-        f"{trad_phrase} {sin_phrase}",
-        trad_phrase,
-        sin_phrase,
-        "ancient mythology dramatic",
-    ]
+    query_attempts = [f"{trad_phrase} {sin_phrase}", trad_phrase, sin_phrase, "ancient mythology dramatic"]
 
-    url = "https://api.unsplash.com/photos/random"
-    offset = len(downloaded_paths)   # start file index after wikimedia slot
-
-    for query in query_attempts:
-        logging.info(f"Unsplash querying: '{query}' (count={unsplash_count})")
-        params = {"query": query, "orientation": "portrait",
-                  "count": unsplash_count, "client_id": api_key}
-        try:
-            res = requests.get(url, params=params, timeout=15)
-            if res.status_code == 200:
-                photos = res.json()
-                if not isinstance(photos, list) or len(photos) == 0:
-                    logging.warning(f"Unsplash empty for '{query}', trying next...")
-                    continue
-                for i, photo in enumerate(photos):
-                    img_url   = photo["urls"]["regular"]
-                    save_path = os.path.join(save_dir, f"unsplash_{offset + i}.jpg")
-                    with open(save_path, "wb") as f:
-                        f.write(requests.get(img_url, timeout=15).content)
-                    downloaded_paths.append(save_path)
-                logging.info(f"Unsplash: downloaded {len(photos)} images (query: '{query}')")
-                break
-            else:
-                logging.warning(f"Unsplash {res.status_code} for '{query}', trying next...")
-        except Exception as e:
-            logging.warning(f"Unsplash request failed for '{query}': {e}")
+    if api_key:
+        for q in query_attempts:
+            if len(downloaded_paths) >= count: break
+            logging.info(f"Priority 4: Fallback querying Unsplash: '{q}'")
+            params = {"query": q, "orientation": "portrait", "count": count - len(downloaded_paths), "client_id": api_key}
+            try:
+                res = requests.get(url, params=params, timeout=15)
+                if res.status_code == 200:
+                    photos = res.json()
+                    if isinstance(photos, list):
+                        for photo in photos:
+                            img_url = photo["urls"]["regular"]
+                            save_path = os.path.join(save_dir, f"unsplash_p4_{len(downloaded_paths)}.jpg")
+                            with open(save_path, "wb") as f:
+                                f.write(requests.get(img_url, timeout=15).content)
+                            downloaded_paths.append(save_path)
+            except: continue
 
     return downloaded_paths
+
 
 
 def bake_image_with_pillow(input_path, output_path, title_text):
@@ -330,7 +418,7 @@ def build_video(date_str, force=False):
     tradition = meta.get('tradition', '')
     sin_tag = meta.get('sin_tag', '')
 
-    img_paths = download_unsplash_images(title_text, tradition, sin_tag, output_dir, count=8)
+    img_paths = download_images(title_text, tradition, sin_tag, output_dir, count=8)
     if not img_paths:
         logging.error("UNSPLASH_API_KEY missing or quota exceeded — using gradient fallback.")
         dumb_img = os.path.join(output_dir, "unsplash_0.jpg")
@@ -361,9 +449,9 @@ def build_video(date_str, force=False):
     final_audio = voice_audio
     music_path = get_random_music()
     if music_path:
-        logging.info(f"Injecting explicit 0.18 volume background track: {music_path}")
+        logging.info(f"Injecting explicit 0.22 volume background track: {music_path}")
         music = AudioFileClip(music_path)
-        music = afx.audio_loop(music, duration=voice_dur).volumex(0.18)
+        music = afx.audio_loop(music, duration=voice_dur).volumex(0.22)
         final_audio = CompositeAudioClip([voice_audio, music])
         
         spotify_dir = "ready-for-spotify"
@@ -397,11 +485,35 @@ def build_video(date_str, force=False):
     
     final_video = final_video.set_audio(final_audio).set_duration(voice_dur)
     
-    logging.info(f"Writing single-layer massive payload to {final_video_path}... (MoviePy takes slightly longer natively due to frame filtering, be patient!)")
-    final_video.write_videofile(final_video_path, fps=24, codec="libx264", audio_codec="aac", threads=4, logger=None)
-    
-    voice_audio.close()
-    final_video.close()
+    try:
+        logging.info(f"Writing single-layer massive payload to {final_video_path}... (MoviePy takes slightly longer natively due to frame filtering, be patient!)")
+        final_video.write_videofile(final_video_path, fps=24, codec="libx264", audio_codec="aac", threads=4, logger=None)
+    finally:
+        # EXPLICIT CLEANUP to avoid [WinError 6] The handle is invalid on Windows
+        import gc
+        try:
+            voice_audio.close()
+        except: pass
+        try:
+            if 'music' in locals():
+                music.close()
+        except: pass
+        try:
+            if 'final_audio' in locals() and final_audio != voice_audio:
+                final_audio.close()
+        except: pass
+        try:
+            final_video.close()
+        except: pass
+        
+        for c in clips:
+            try:
+                c.close()
+            except: pass
+        
+        # Force garbage collection to ensure FFMPEG handles are released before script ends
+        gc.collect()
+
     return True
 
 def main():
