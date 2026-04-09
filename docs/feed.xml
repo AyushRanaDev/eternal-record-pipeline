@@ -5,7 +5,7 @@
     <description>Daily cinematic mythology stories — 90-second vertical videos.</description>
     <link>https://ayushranadev.github.io/eternal-record-pipeline</link>
     <language>en-us</language>
-    <lastBuildDate>Thu, 09 Apr 2026 04:49:25 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 09 Apr 2026 08:54:58 +0000</lastBuildDate>
     <managingEditor>ranaayush6983@gmail.com (Ayush Rana)</managingEditor>
     <itunes:author>Ayush Rana</itunes:author>
     <itunes:explicit>no</itunes:explicit>
@@ -15,8 +15,16 @@
       <itunes:email>ranaayush6983@gmail.com</itunes:email>
     </itunes:owner>
     <item>
-      <title>The Fading Light of Wisdom</title>
-      <description>Today&apos;s story will change how you see everything... Once a great sage named Janaka ruled the kingdom of Videha, known for his wisdom and spiritual pursuits. His kingdom thrived, and people came from all over to learn from him. Janaka had a beautiful daughter named Sita, who was also wise and learned. One day, a great warrior named Ravana, the king of Lanka, came to Videha, seeking Janaka&apos;s blessing for his future conquests. Ravana was known for his incredible strength, but also his laziness, for he often relied on others to do his work. Janaka, however, saw beyond Ravana&apos;s strength and recognized the sloth that lay beneath. He warned Ravana that his laziness would be his downfall, but Ravana refused to listen. As Janaka&apos;s prophecies began to unfold, Ravana found himself trapped in his own kingdom, unable to move or act. His strength had waned, and his power had disappeared. This is Sloth — the belief that the world will wait for you. Today we procrastinate, delay, and put off our duties, but in doing so, we seal our own fate.</description>
+      <title>The Unyielding Greed of Kubera</title>
+      <description>Today&apos;s story will change how you see everything... In the great city of Alakapura, the treasure of the gods lay hidden. Kubera, the mighty treasurer of the gods, guarded the riches with his life.</description>
+      <pubDate>Thu, 09 Apr 2026 08:00:00 +0000</pubDate>
+      <guid isPermaLink="false">https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-09-08/mixed_audio.mp3</guid>
+      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-09-08/mixed_audio.mp3" length="899700" type="audio/mpeg"/>
+      <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-09-08/final_video.mp4" length="14010080" type="video/mp4"/>
+    </item>
+    <item>
+      <title>Eternal Record – 2026-04-09-04</title>
+      <description>A cinematic mythology story.</description>
       <pubDate>Thu, 09 Apr 2026 04:00:00 +0000</pubDate>
       <guid isPermaLink="false">https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-09-04/mixed_audio.mp3</guid>
       <enclosure url="https://ayushranadev.github.io/eternal-record-pipeline/episodes/2026-04-09-04/mixed_audio.mp3" length="1042224" type="audio/mpeg"/>
